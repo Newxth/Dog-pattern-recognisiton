@@ -1,0 +1,16 @@
+DOG BREED CLASSIFICATION REPORT
+==================================================
+
+                                precision    recall  f1-score   support
+
+           n02085620_chihuahua      0.970     0.941     0.955        34
+              n02088364_beagle      0.906     0.967     0.935        30
+    n02099601_golden_retriever      1.000     0.971     0.985        34
+    n02102040_english_springer      0.971     1.000     0.985        33
+n02107683_bernese_mountain_dog      1.000     0.974     0.987        38
+      n02110185_siberian_husky      0.950     0.927     0.938        41
+                 n02110958_pug      0.956     0.977     0.966        44
+
+                      accuracy                          0.965       254
+                     macro avg      0.965     0.965     0.965       254
+                  weighted avg      0.965     0.965     0.965       254

@@ -1,0 +1,774 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>🐕 Dog Pattern Recognition System</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+  <style>
+    /* ── Reset & Base ─────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0f1117;
+      --surface:   #1a1d27;
+      --card:      #22263a;
+      --border:    #2e3250;
+      --accent:    #6c63ff;
+      --accent2:   #00d4aa;
+      --accent3:   #ff6b6b;
+      --text:      #e8eaf6;
+      --muted:     #8b90b0;
+      --success:   #00d4aa;
+      --radius:    14px;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      min-height: 100vh;
+    }
+
+    /* ── Header ───────────────────────────────────────── */
+    header {
+      background: linear-gradient(135deg, #1a1d27 0%, #12142a 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 20px 40px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    header h1 { font-size: 1.6rem; font-weight: 700; }
+    header h1 span { color: var(--accent); }
+    .header-badge {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 30px;
+      padding: 6px 16px;
+      font-size: 0.8rem;
+      color: var(--muted);
+      display: flex; gap: 16px;
+    }
+    .badge-item { display: flex; align-items: center; gap: 6px; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent2); }
+    .dot.red { background: var(--accent3); }
+
+    /* ── Layout ───────────────────────────────────────── */
+    main {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 30px 24px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+    }
+    .full-width { grid-column: 1 / -1; }
+
+    /* ── Cards ────────────────────────────────────────── */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+    }
+    .card h2 {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* ── Stat row ─────────────────────────────────────── */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+    }
+    .stat-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 18px;
+      text-align: center;
+    }
+    .stat-box .num {
+      font-size: 2rem;
+      font-weight: 700;
+      color: var(--accent);
+    }
+    .stat-box .label {
+      font-size: 0.78rem;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+
+    /* ── Upload zone ──────────────────────────────────── */
+    .upload-zone {
+      border: 2px dashed var(--border);
+      border-radius: var(--radius);
+      padding: 40px 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      position: relative;
+    }
+    .upload-zone:hover,
+    .upload-zone.dragover {
+      border-color: var(--accent);
+      background: rgba(108,99,255,0.05);
+    }
+    .upload-zone .icon { font-size: 3rem; margin-bottom: 12px; }
+    .upload-zone p { color: var(--muted); font-size: 0.9rem; }
+    .upload-zone input[type=file] {
+      position: absolute; inset: 0;
+      opacity: 0; cursor: pointer;
+    }
+    .btn {
+      display: inline-block;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 10px 24px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 14px;
+      transition: opacity 0.2s;
+    }
+    .btn:hover { opacity: 0.85; }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* ── Preview ──────────────────────────────────────── */
+    #preview-box {
+      display: none;
+      margin-top: 16px;
+      text-align: center;
+    }
+    #preview-img {
+      max-height: 200px;
+      border-radius: 10px;
+      border: 2px solid var(--border);
+    }
+
+    /* ── Results ──────────────────────────────────────── */
+    #results-box { display: none; margin-top: 20px; }
+    .result-top {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      background: var(--surface);
+      border-radius: 10px;
+      padding: 16px;
+      margin-bottom: 14px;
+    }
+    .result-thumb {
+      width: 80px; height: 80px;
+      border-radius: 8px;
+      object-fit: cover;
+      border: 2px solid var(--accent);
+    }
+    .result-breed { font-size: 1.4rem; font-weight: 700; }
+    .result-conf  { color: var(--accent2); font-size: 1rem; margin-top: 4px; }
+
+    .pred-bar-wrap { margin-bottom: 10px; }
+    .pred-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.85rem;
+      margin-bottom: 4px;
+    }
+    .pred-bar-bg {
+      background: var(--surface);
+      border-radius: 30px;
+      height: 10px;
+      overflow: hidden;
+    }
+    .pred-bar {
+      height: 100%;
+      border-radius: 30px;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      transition: width 0.6s ease;
+    }
+    .dataset-note {
+      font-size: 0.78rem;
+      color: var(--muted);
+      margin-top: 10px;
+    }
+
+    /* ── BST Visualiser ───────────────────────────────── */
+    #bst-svg {
+      width: 100%;
+      height: 360px;
+      background: var(--surface);
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      overflow: hidden;
+    }
+    .node circle {
+      fill: var(--card);
+      stroke: var(--accent);
+      stroke-width: 2;
+      cursor: pointer;
+      transition: fill 0.2s;
+    }
+    .node circle:hover { fill: var(--accent); }
+    .node text {
+      fill: var(--text);
+      font-size: 9px;
+      text-anchor: middle;
+      dominant-baseline: central;
+      pointer-events: none;
+    }
+    .link {
+      fill: none;
+      stroke: var(--border);
+      stroke-width: 1.5;
+    }
+    .node.highlighted circle { fill: var(--accent2); stroke: var(--accent2); }
+
+    /* ── Search ───────────────────────────────────────── */
+    .search-row {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+    .search-input {
+      flex: 1;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 14px;
+      color: var(--text);
+      font-size: 0.9rem;
+      outline: none;
+    }
+    .search-input:focus { border-color: var(--accent); }
+    #search-result {
+      background: var(--surface);
+      border-radius: 10px;
+      padding: 14px;
+      font-size: 0.88rem;
+      display: none;
+    }
+    #search-result .breed-title {
+      font-size: 1rem;
+      font-weight: 700;
+      margin-bottom: 8px;
+      color: var(--accent2);
+    }
+    #search-result table { width: 100%; border-collapse: collapse; }
+    #search-result td { padding: 4px 8px; color: var(--muted); }
+    #search-result td:last-child { color: var(--text); }
+
+    /* ── Chart ────────────────────────────────────────── */
+    #bar-chart-wrap {
+      width: 100%;
+      overflow-x: auto;
+    }
+    .bar-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+    .bar-name {
+      width: 160px;
+      font-size: 0.78rem;
+      color: var(--muted);
+      text-align: right;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .bar-outer {
+      flex: 1;
+      background: var(--surface);
+      border-radius: 30px;
+      height: 14px;
+      overflow: hidden;
+    }
+    .bar-inner {
+      height: 100%;
+      border-radius: 30px;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+    }
+    .bar-count {
+      font-size: 0.78rem;
+      color: var(--text);
+      width: 40px;
+    }
+
+    /* ── Queue ────────────────────────────────────────── */
+    .queue-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+    .queue-item {
+      background: var(--surface);
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 0.85rem;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .queue-item img {
+      width: 36px; height: 36px;
+      border-radius: 6px;
+      object-fit: cover;
+    }
+    .queue-badge {
+      background: var(--accent);
+      color: #fff;
+      border-radius: 4px;
+      padding: 2px 8px;
+      font-size: 0.72rem;
+      font-weight: 700;
+    }
+    .empty-msg { color: var(--muted); font-size: 0.85rem; text-align: center; padding: 20px; }
+
+    /* ── Loading spinner ──────────────────────────────── */
+    .spinner {
+      display: none;
+      width: 28px; height: 28px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      margin: 16px auto;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Responsive ───────────────────────────────────── */
+    @media (max-width: 900px) {
+      main { grid-template-columns: 1fr; }
+      .stats-row { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════ HEADER ══════════════════════════════ -->
+<header>
+  <h1>🐕 Dog <span>Pattern Recognition</span> System</h1>
+  <div class="header-badge">
+    <div class="badge-item">
+      <div class="dot {% if not stats.model_ready %}red{% endif %}"></div>
+      Model: {{ "Ready" if stats.model_ready else "Not trained" }}
+    </div>
+    <div class="badge-item">
+      <div class="dot"></div>
+      BST: {{ stats.total_breeds }} breeds
+    </div>
+    <div class="badge-item">
+      <div class="dot"></div>
+      {{ stats.device }}
+    </div>
+  </div>
+</header>
+
+<!-- ════════════════════════════════ MAIN ═══════════════════════════════ -->
+<main>
+
+  <!-- ── Stats row ───────────────────────────────────────────────────── -->
+  <div class="card full-width">
+    <h2>📊 Dataset Overview</h2>
+    <div class="stats-row">
+      <div class="stat-box">
+        <div class="num" id="stat-breeds">{{ stats.total_breeds }}</div>
+        <div class="label">Dog Breeds (BST nodes)</div>
+      </div>
+      <div class="stat-box">
+        <div class="num" id="stat-images">{{ stats.total_images }}</div>
+        <div class="label">Total Images</div>
+      </div>
+      <div class="stat-box">
+        <div class="num" id="stat-queue">{{ stats.queue_size }}</div>
+        <div class="label">Queue Size</div>
+      </div>
+      <div class="stat-box">
+        <div class="num">{{ "✅" if stats.model_ready else "❌" }}</div>
+        <div class="label">Model Status</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Upload & Recognise ──────────────────────────────────────────── -->
+  <div class="card">
+    <h2>🔍 Recognise a Dog Breed</h2>
+
+    <div class="upload-zone" id="drop-zone">
+      <div class="icon">📷</div>
+      <p>Drag & drop a dog photo here</p>
+      <p>or click to browse</p>
+      <input type="file" id="file-input" accept="image/*"/>
+    </div>
+
+    <div id="preview-box">
+      <img id="preview-img" src="" alt="preview"/>
+    </div>
+
+    <div style="text-align:center">
+      <button class="btn" id="recognise-btn" disabled>Recognise Breed</button>
+    </div>
+    <div class="spinner" id="spinner"></div>
+
+    <!-- Results -->
+    <div id="results-box">
+      <div class="result-top">
+        <img class="result-thumb" id="result-thumb" src="" alt=""/>
+        <div>
+          <div class="result-breed" id="result-breed">—</div>
+          <div class="result-conf"  id="result-conf">—</div>
+        </div>
+      </div>
+      <div id="result-bars"></div>
+      <p class="dataset-note" id="result-note"></p>
+    </div>
+  </div>
+
+  <!-- ── BST Search ──────────────────────────────────────────────────── -->
+  <div class="card">
+    <h2>🌳 Search the BST</h2>
+    <div class="search-row">
+      <input class="search-input" id="search-input"
+             placeholder="e.g. n02110185_siberian_husky" type="text"/>
+      <button class="btn" onclick="searchBreed()">Search</button>
+    </div>
+    <div id="search-result"></div>
+
+    <h2 style="margin-top:20px">📈 Image Count per Breed</h2>
+    <div id="bar-chart-wrap"></div>
+  </div>
+
+  <!-- ── BST Visualiser ──────────────────────────────────────────────── -->
+  <div class="card full-width">
+    <h2>🌲 Binary Search Tree — Live Visualisation</h2>
+    <p style="color:var(--muted);font-size:0.82rem;margin-bottom:12px">
+      Each circle = one breed node. Left child = alphabetically earlier.
+      Right child = alphabetically later. Click a node to search it.
+    </p>
+    <svg id="bst-svg"></svg>
+  </div>
+<!-- ── Max Heap Visualiser ──────────────────────────────────────────── -->
+<div class="card full-width">
+  <h2>🏆 Max Heap — Breed Ranking by Image Count</h2>
+  <p style="color:var(--muted);font-size:0.82rem;margin-bottom:16px">
+    The breed with the most training images is always at the top (index 0).
+    Every parent node is guaranteed to be larger than its children.
+    Getting the top breed is instant — O(1).
+  </p>
+
+  <!-- Podium — top 3 -->
+  <div id="heap-podium" style="display:flex;gap:16px;margin-bottom:24px;
+       justify-content:center;align-items:flex-end"></div>
+
+  <!-- Full heap as bar list -->
+  <div id="heap-bars"></div>
+
+  <!-- Raw array display -->
+  <div style="margin-top:16px">
+    <p style="color:var(--muted);font-size:0.8rem;margin-bottom:8px">
+      Internal array representation (how Python stores the heap in memory):
+    </p>
+    <div id="heap-array" style="display:flex;gap:8px;flex-wrap:wrap"></div>
+  </div>
+</div>
+  <!-- ── Processing Queue ────────────────────────────────────────────── -->
+  <div class="card full-width">
+    <h2>⏳ Image Processing Queue (FIFO)</h2>
+    <p style="color:var(--muted);font-size:0.82rem;margin-bottom:12px">
+      Images are processed in the order they are uploaded (First In, First Out).
+      This is the Queue data structure — the second data structure in this project.
+    </p>
+    <div class="queue-list" id="queue-list">
+      <div class="empty-msg">Queue is empty — upload an image to see it here</div>
+    </div>
+  </div>
+
+</main>
+
+<!-- ════════════════════════════════ JS ═════════════════════════════════ -->
+<script>
+// ── File upload & preview ──────────────────────────────────────────────
+const fileInput   = document.getElementById("file-input");
+const dropZone    = document.getElementById("drop-zone");
+const previewBox  = document.getElementById("preview-box");
+const previewImg  = document.getElementById("preview-img");
+const recognBtn   = document.getElementById("recognise-btn");
+const spinner     = document.getElementById("spinner");
+let   selectedFile = null;
+
+fileInput.addEventListener("change", e => handleFile(e.target.files[0]));
+dropZone.addEventListener("dragover",  e => { e.preventDefault(); dropZone.classList.add("dragover"); });
+dropZone.addEventListener("dragleave", ()=> dropZone.classList.remove("dragover"));
+dropZone.addEventListener("drop", e => {
+  e.preventDefault();
+  dropZone.classList.remove("dragover");
+  handleFile(e.dataTransfer.files[0]);
+});
+
+function handleFile(file) {
+  if (!file) return;
+  selectedFile = file;
+  const url = URL.createObjectURL(file);
+  previewImg.src  = url;
+  previewBox.style.display = "block";
+  recognBtn.disabled = false;
+}
+
+// ── Recognise ──────────────────────────────────────────────────────────
+recognBtn.addEventListener("click", async () => {
+  if (!selectedFile) return;
+
+  recognBtn.disabled = true;
+  spinner.style.display = "block";
+  document.getElementById("results-box").style.display = "none";
+
+  const fd = new FormData();
+  fd.append("image", selectedFile);
+
+  try {
+    const res  = await fetch("/api/recognise", { method: "POST", body: fd });
+    const data = await res.json();
+
+    if (data.error) {
+      alert("Error: " + data.error);
+      return;
+    }
+
+    // Show results
+    const top = data.predictions[0];
+    document.getElementById("result-thumb").src  = "data:image/jpeg;base64," + data.thumbnail;
+    document.getElementById("result-breed").textContent = top.breed;
+    document.getElementById("result-conf").textContent  = top.confidence.toFixed(1) + "% confident";
+    document.getElementById("result-note").textContent  =
+      `BST lookup: '${top.breed_key}' has ${top.dataset_count} training images in the dataset.`;
+
+    // Confidence bars
+    const barsHtml = data.predictions.map((p, i) => `
+      <div class="pred-bar-wrap">
+        <div class="pred-label">
+          <span>${["🥇","🥈","🥉"][i]} ${p.breed}</span>
+          <span>${p.confidence.toFixed(1)}%</span>
+        </div>
+        <div class="pred-bar-bg">
+          <div class="pred-bar" style="width:${p.confidence}%"></div>
+        </div>
+      </div>`).join("");
+    document.getElementById("result-bars").innerHTML = barsHtml;
+    document.getElementById("results-box").style.display = "block";
+
+    // Update queue display
+    updateQueueDisplay(data);
+    updateStats();
+
+  } catch(err) {
+    alert("Network error — is app.py running?");
+  } finally {
+    spinner.style.display = "none";
+    recognBtn.disabled = false;
+  }
+});
+
+// ── BST Search ─────────────────────────────────────────────────────────
+async function searchBreed(key) {
+  const query = key || document.getElementById("search-input").value.trim();
+  if (!query) return;
+
+  const res  = await fetch("/api/search/" + encodeURIComponent(query));
+  const box  = document.getElementById("search-result");
+
+  if (res.status === 404) {
+    box.style.display = "block";
+    box.innerHTML = `<p style="color:var(--accent3)">❌ Breed '${query}' not found in BST.</p>`;
+    return;
+  }
+
+  const data = await res.json();
+  const clean = data.breed_name.split("_").slice(1).join(" ");
+  box.style.display = "block";
+  box.innerHTML = `
+    <div class="breed-title">✅ ${clean.toUpperCase()}</div>
+    <table>
+      <tr><td>BST Key</td><td>${data.breed_name}</td></tr>
+      <tr><td>Image Count</td><td>${data.count}</td></tr>
+      <tr><td>Date Added</td><td>${data.date_added}</td></tr>
+      <tr><td>Status</td><td>${data.status}</td></tr>
+    </table>
+    <p style="margin-top:10px;color:var(--muted);font-size:0.8rem">
+      Sample images: ${data.images.slice(0,3).join(", ")}
+    </p>`;
+}
+
+// ── Bar chart ──────────────────────────────────────────────────────────
+async function loadBarChart() {
+  const res  = await fetch("/api/stats");
+  const data = await res.json();
+  const max  = Math.max(...data.breeds.map(b => b.count));
+  const wrap = document.getElementById("bar-chart-wrap");
+  wrap.innerHTML = data.breeds.map(b => `
+    <div class="bar-row">
+      <div class="bar-name">${b.name}</div>
+      <div class="bar-outer">
+        <div class="bar-inner" style="width:${(b.count/max*100).toFixed(1)}%"></div>
+      </div>
+      <div class="bar-count">${b.count}</div>
+    </div>`).join("");
+}
+
+// ── BST Tree Visualisation (D3.js) ─────────────────────────────────────
+async function loadBSTVis() {
+  const res  = await fetch("/api/bst");
+  const data = await res.json();
+  if (!data.tree) return;
+
+  const svg    = d3.select("#bst-svg");
+  const W      = document.getElementById("bst-svg").clientWidth || 900;
+  const H      = 360;
+  svg.selectAll("*").remove();
+
+  const root = d3.hierarchy(data.tree, d => {
+    const ch = [];
+    if (d.left)  ch.push(d.left);
+    if (d.right) ch.push(d.right);
+    return ch.length ? ch : null;
+  });
+
+  const treeLayout = d3.tree().size([W - 40, H - 60]);
+  treeLayout(root);
+
+  const g = svg.append("g").attr("transform", "translate(20,30)");
+
+  // Links
+  g.selectAll(".link")
+   .data(root.links())
+   .join("path")
+   .attr("class", "link")
+   .attr("d", d3.linkVertical()
+     .x(d => d.x)
+     .y(d => d.y));
+
+  // Nodes
+  const node = g.selectAll(".node")
+    .data(root.descendants())
+    .join("g")
+    .attr("class", "node")
+    .attr("transform", d => `translate(${d.x},${d.y})`)
+    .style("cursor", "pointer")
+    .on("click", (e, d) => {
+      document.getElementById("search-input").value = d.data.key;
+      searchBreed(d.data.key);
+      g.selectAll(".node").classed("highlighted", false);
+      d3.select(e.currentTarget).classed("highlighted", true);
+    });
+
+  node.append("circle").attr("r", 18);
+  node.append("text")
+    .attr("dy", "0.35em")
+    .text(d => d.data.name.split(" ").pop().substring(0, 7));
+}
+
+// ── Queue display ──────────────────────────────────────────────────────
+function updateQueueDisplay(data) {
+  const list = document.getElementById("queue-list");
+  // Add newly processed item to history display
+  const item = data;
+  const top  = item.predictions ? item.predictions[0] : null;
+  const el   = document.createElement("div");
+  el.className = "queue-item";
+  el.innerHTML = `
+    <img src="data:image/jpeg;base64,${item.thumbnail}" alt=""/>
+    <span>${item.filename}</span>
+    ${top ? `<span class="queue-badge">${top.breed} ${top.confidence.toFixed(0)}%</span>` : ""}
+    <span style="color:var(--accent2);font-size:0.75rem">✔ Processed</span>`;
+
+  if (list.querySelector(".empty-msg")) list.innerHTML = "";
+  list.insertBefore(el, list.firstChild);
+  document.getElementById("stat-queue").textContent = data.queue_size;
+}
+
+async function updateStats() {
+  const res  = await fetch("/api/stats");
+  const data = await res.json();
+  document.getElementById("stat-breeds").textContent = data.total_breeds;
+  document.getElementById("stat-images").textContent = data.total_images;
+}
+
+// ── Init ──
+loadBarChart();
+loadBSTVis();
+loadHeap();
+
+async function loadHeap() {
+  const res  = await fetch("/api/heap");
+  const data = await res.json();
+  if (!data.heap || !data.heap.length) return;
+
+  const max = data.heap[0].count;
+
+  // ── Podium (top 3) ───────────────────────────────────────────────
+  const medals  = ["🥇","🥈","🥉"];
+  const heights = ["120px","90px","70px"];
+  const colours = ["#6c63ff","#00d4aa","#ff6b6b"];
+
+  document.getElementById("heap-podium").innerHTML =
+    data.heap.slice(0, 3).map((b, i) => {
+      const clean = b.breed.split("_").slice(1).join(" ")
+                           .replace(/\b\w/g, c => c.toUpperCase());
+      return `
+        <div style="text-align:center;flex:1;max-width:200px">
+          <div style="font-size:1.8rem">${medals[i]}</div>
+          <div style="background:${colours[i]};border-radius:10px 10px 0 0;
+               height:${heights[i]};display:flex;align-items:center;
+               justify-content:center;flex-direction:column;padding:8px">
+            <div style="font-weight:700;font-size:0.9rem">${clean}</div>
+            <div style="font-size:0.8rem;opacity:0.85">${b.count} images</div>
+          </div>
+        </div>`;
+    }).join("");
+
+  // ── Full bar list ────────────────────────────────────────────────
+  document.getElementById("heap-bars").innerHTML =
+    data.heap.map((b, i) => {
+      const clean = b.breed.split("_").slice(1).join(" ")
+                           .replace(/\b\w/g, c => c.toUpperCase());
+      return `
+        <div class="bar-row">
+          <div class="bar-name">[${i}] ${clean}</div>
+          <div class="bar-outer">
+            <div class="bar-inner"
+                 style="width:${(b.count/max*100).toFixed(1)}%"></div>
+          </div>
+          <div class="bar-count">${b.count}</div>
+        </div>`;
+    }).join("");
+
+  // ── Raw array boxes ──────────────────────────────────────────────
+  document.getElementById("heap-array").innerHTML =
+    data.raw.map((b, i) => {
+      const clean = b.breed.split("_").slice(1).join(" ")
+                           .replace(/\b\w/g, c => c.toUpperCase());
+      return `
+        <div style="background:var(--surface);border:1px solid var(--border);
+             border-radius:8px;padding:10px 14px;text-align:center;
+             min-width:100px">
+          <div style="color:var(--muted);font-size:0.72rem">index [${i}]</div>
+          <div style="font-weight:700;font-size:0.85rem;margin:4px 0">${clean}</div>
+          <div style="color:var(--accent2);font-size:0.8rem">${b.count}</div>
+        </div>`;
+    }).join("");
+}
+</script>
+</body>
+</html>
