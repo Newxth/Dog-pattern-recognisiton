@@ -72,7 +72,7 @@ pip
 ### Step 1 — Install dependencies
 
 ```bash
-pip install flask torch torchvision pillow
+pip install flask torch torchvision pillow scikit-learn
 ```
 
 ### Step 2 — Prepare your dataset
