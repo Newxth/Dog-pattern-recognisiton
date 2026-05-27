@@ -37,7 +37,7 @@ from dog_dataset_manager import DogDatasetBST, load_from_json
 MODEL_PATH    = "dog_model.pth"
 SNAPSHOT_PATH = "dataset_snapshot.json"
 IMAGE_SIZE    = 224
-MAX_QUEUE     = 10   # maximum images in the processing queue
+MAX_QUEUE     = 10
 
 app = Flask(__name__)
 
@@ -46,19 +46,6 @@ app = Flask(__name__)
 # ---------------------------------------------------------------------------
 
 class ImageQueue:
-    """
-    A Queue (FIFO) data structure for managing uploaded images.
-
-    This is the SECOND data structure in the project (BST is the first).
-
-    A Queue follows First-In-First-Out order:
-    - enqueue() adds an image to the back
-    - dequeue() removes and returns the front image
-    - This ensures images are processed in the order they were uploaded
-
-    Internally uses collections.deque for O(1) enqueue and dequeue,
-    versus a list which would be O(n) for removal from the front.
-    """
 
     def __init__(self, max_size: int = MAX_QUEUE):
         self._queue   = deque()
@@ -107,46 +94,17 @@ class ImageQueue:
 # ---------------------------------------------------------------------------
 
 class BreedMaxHeap:
-    """
-    A Max Heap that ranks dog breeds by image count.
-    The breed with the most images is always at index 0 (the top).
 
-    Think of it as a self-sorting leaderboard — the winner
-    always stays at the top automatically.
-
-    Key operations:
-    - insert()     : add a breed → O(log n)
-    - get_max()    : see the top breed → O(1) instant
-    - extract_max(): remove and return the top breed → O(log n)
-    """
 
     def __init__(self):
-        self._heap = []   # stored as a flat list internally
-
-    # ------------------------------------------------------------------
-    # How a heap uses a flat list to fake a tree:
-    #
-    # Index:  0        1        2        3        4
-    #        [218]    [200]    [195]    [192]    [152]
-    #
-    # Parent of node i  → (i - 1) // 2
-    # Left child of i   → 2 * i + 1
-    # Right child of i  → 2 * i + 2
-    # ------------------------------------------------------------------
+        self._heap = []
 
     def _parent(self, i):   return (i - 1) // 2
     def _left(self, i):     return 2 * i + 1
     def _right(self, i):    return 2 * i + 2
 
     def insert(self, breed_name: str, count: int) -> None:
-        """
-        Add a breed to the heap then bubble it UP
-        until the Max Heap rule is restored.
 
-        Like a new student joining a class photo —
-        they start at the back and move forward
-        until they're in the right height order.
-        """
         self._heap.append({"breed": breed_name, "count": count})
         self._bubble_up(len(self._heap) - 1)
 
@@ -155,36 +113,27 @@ class BreedMaxHeap:
         return self._heap[0] if self._heap else None
 
     def extract_max(self):
-        """
-        Remove and return the top breed, then restore heap order.
-        Like removing the winner from the podium and reshuffling.
-        """
+
         if not self._heap:
             return None
         if len(self._heap) == 1:
             return self._heap.pop()
 
-        # Swap root with last item, remove root, bubble down
+
         max_item = self._heap[0]
         self._heap[0] = self._heap.pop()
         self._bubble_down(0)
         return max_item
 
     def get_sorted(self) -> list:
-        """Return all breeds sorted highest to lowest count."""
+
         return sorted(self._heap, key=lambda x: x["count"], reverse=True)
 
     def size(self) -> int:
         return len(self._heap)
 
     def _bubble_up(self, i: int) -> None:
-        """
-        After inserting at the bottom, move the new item UP
-        as long as it's bigger than its parent.
 
-        Like a tall student pushing past shorter ones
-        to get to the front of the photo.
-        """
         while i > 0:
             parent = self._parent(i)
             if self._heap[i]["count"] > self._heap[parent]["count"]:
@@ -196,14 +145,7 @@ class BreedMaxHeap:
                 break   # heap rule satisfied — stop
 
     def _bubble_down(self, i: int) -> None:
-        """
-        After removing the top, move the replacement item DOWN
-        until it's bigger than both its children.
 
-        Like a short student placed at the front —
-        they keep swapping with taller students
-        until they're in the right spot.
-        """
         size = len(self._heap)
         while True:
             largest = i
@@ -280,12 +222,10 @@ def load_bst():
         print(f"  [WARNING] No snapshot found.")
 
 
-# ---------------------------------------------------------------------------
-# IMAGE PROCESSING
-# ---------------------------------------------------------------------------
+
 
 def process_image(pil_image: Image.Image) -> list[tuple[str, float]]:
-    """Run one image through the model and return top-3 predictions."""
+
     if model is None:
         return []
 
@@ -308,14 +248,14 @@ def process_image(pil_image: Image.Image) -> list[tuple[str, float]]:
 
 
 def image_to_base64(pil_image: Image.Image) -> str:
-    """Convert PIL image to base64 string for embedding in HTML."""
+
     buf = io.BytesIO()
     pil_image.save(buf, format="JPEG", quality=85)
     return base64.b64encode(buf.getvalue()).decode("utf-8")
 
 
 def get_bst_tree_data():
-    """Serialise BST into a format the frontend D3.js chart can use."""
+
     def node_to_dict(node):
         if node is None:
             return None
@@ -402,7 +342,7 @@ def api_recognise():
 
 @app.route("/api/bst")
 def api_bst():
-    """Return the full BST structure for visualisation."""
+
     return jsonify({
         "tree":   get_bst_tree_data(),
         "breeds": [
@@ -418,7 +358,7 @@ def api_bst():
 
 @app.route("/api/search/<breed_key>")
 def api_search(breed_key):
-    """Search the BST for a specific breed."""
+
     node = bst.search(breed_key)
     if not node:
         return jsonify({"found": False}), 404

@@ -1,13 +1,3 @@
-"""
-dog_dataset_manager.py
-======================
-Production-grade ML Dataset Manager for Dog Breed Images.
-Uses a self-balancing-aware Binary Search Tree (BST) backed by
-JSON persistence and an interactive CLI menu.
-
-Author : Generated for production use
-Python : 3.9+
-"""
 
 from __future__ import annotations
 
@@ -32,18 +22,6 @@ VALID_IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp", ".ti
 # ===========================================================================
 
 class Node:
-    """
-    A single node in the DogDatasetBST.
-
-    Attributes
-    ----------
-    breed_name  : str            – Primary key; used for alphabetic ordering.
-    images_list : list[str]      – Relative paths / filenames for this breed.
-    metadata    : dict           – count, date_added, status.
-    left        : Node | None    – Left child (breeds that sort lower).
-    right       : Node | None    – Right child (breeds that sort higher).
-    height      : int            – Height of this subtree; used for AVL balancing.
-    """
 
     __slots__ = ("breed_name", "images_list", "metadata", "left", "right", "height")
 
@@ -61,18 +39,6 @@ class Node:
 
 
 class DogDatasetBST:
-    """
-    AVL-balanced Binary Search Tree keyed on dog breed names.
-
-    AVL invariant  : |height(left) - height(right)| ≤ 1 at every node.
-    Insert         : O(log n) amortised.
-    Search         : O(log n) amortised.
-    In-order walk  : O(n).
-
-    The tree automatically rebalances after every insertion via single and
-    double (zig-zag) rotations, preventing worst-case O(n) degeneration that
-    occurs when breeds are inserted in alphabetical order into a plain BST.
-    """
 
     def __init__(self) -> None:
         self._root: Optional[Node] = None
@@ -83,11 +49,7 @@ class DogDatasetBST:
     # ------------------------------------------------------------------
 
     def insert(self, breed: str, image: Optional[str] = None) -> None:
-        """Insert a breed / image pair into the tree.
 
-        If the breed already exists its images_list is extended and the
-        metadata count is incremented; no duplicate node is created.
-        """
         breed = breed.strip().lower()
         if image:
             image = image.strip()
@@ -127,7 +89,7 @@ class DogDatasetBST:
     # ------------------------------------------------------------------
 
     def _rotate_right(self, y: Node) -> Node:
-        """Single right rotation around *y*."""
+
         x = y.left
         t2 = x.right
         x.right = y
@@ -387,14 +349,7 @@ def save_to_json(tree: DogDatasetBST, filepath: str = SNAPSHOT_FILE) -> None:
 
 
 def load_from_json(tree: DogDatasetBST, filepath: str = SNAPSHOT_FILE) -> None:
-    """
-    Deserialise a JSON snapshot back into *tree*, replacing any existing data.
 
-    Parameters
-    ----------
-    tree     : DogDatasetBST – Target tree (will be cleared first).
-    filepath : str           – Source JSON file path.
-    """
     src = Path(filepath)
 
     if not src.exists():
