@@ -1,84 +1,25 @@
-[Dog_Pattern_Recognition_Documentation.md](https://github.com/user-attachments/files/28273547/Dog_Pattern_Recognition_Documentation.md)
-# Dog Pattern Recognition System
-## Technical Documentation
+# 🐕 Dog Pattern Recognition System
 
-**Repository:** https://github.com/Newxth/Dog-pattern-recognisiton  
-**Language:** Python 3.9+  
-**Version:** 1.0
+A web application that identifies dog breeds from uploaded photos using a fine-tuned ResNet-18 neural network, backed by custom data structures — a Binary Search Tree, a Max Heap, and a Queue — built from scratch in Python.
 
 ---
 
-## 1. What the Application Does
+## What It Does
 
-The Dog Pattern Recognition System is a three-stage web application that identifies dog breeds from uploaded photographs. It combines a classical machine learning pipeline with a Flask web interface, allowing users to upload any dog image and receive the top three predicted breeds along with confidence percentages.
-
-**Stage 1 — Dataset Management (`dog_dataset_manager.py`):** Scans a local folder of dog images organised by breed, builds an internal dataset index, and provides an interactive command-line menu to search, list, save, and reload that index.
-
-**Stage 2 — Model Training (`trainer.py`):** Uses the indexed dataset to fine-tune a pre-trained ResNet-18 convolutional neural network (PyTorch) on the user's breed collection. The trained model is saved to `dog_model.pth`.
-
-**Stage 3 — Web Interface (`app.py`):** Launches a Flask server at `http://localhost:5000`. Users upload an image through the browser; the image passes through an upload queue, is classified by the model, and the top predictions are returned instantly alongside dataset statistics for each breed.
+Upload any dog photo and the app returns the top 3 predicted breeds with confidence percentages. The web dashboard also shows a live breed leaderboard and a searchable breed catalogue backed by the BST.
 
 ---
 
-## 2. Data Structures
+## How to Run
 
-The application uses three custom data structures, each chosen to solve a specific problem efficiently.
-
-### 2.1 Binary Search Tree (BST) — AVL-balanced
-**File:** `dog_dataset_manager.py`  
-**Class:** `DogDatasetBST`
-
-The BST is the core dataset index. Each **node** stores one dog breed as its key (`breed_name`), together with a list of image file paths (`images_list`) and metadata (image count, date added, status).
-
-Breeds are ordered alphabetically: breeds that sort lower go to the left child, higher to the right. This means searching for any breed takes **O(log n)** time rather than scanning a flat list.
-
-The tree is **AVL-balanced**, meaning after every insertion it automatically performs left or right rotations to keep the height difference between any two sibling subtrees at most 1. Without this, inserting breeds in alphabetical order (as a folder scan produces) would degenerate into a linked list with O(n) search. The balance factor is maintained via `_bubble_up` / `_bubble_down` helper methods.
-
-An **in-order traversal** (left → root → right) produces all breeds in alphabetical order in O(n) time, used by the "List all breeds" menu option and by the web dashboard.
-
-The entire tree is serialised to `dataset_snapshot.json` and can be reloaded without re-scanning the filesystem.
-
-### 2.2 Queue (FIFO) — Image Processing Queue
-**File:** `app.py`  
-**Class:** `ImageQueue`
-
-Every image uploaded through the web interface is placed into a queue before being processed. This ensures images are handled in the order they arrive (First-In, First-Out). The queue is backed by Python's `collections.deque`, which provides **O(1)** `enqueue` (append to back) and **O(1)** `dequeue` (remove from front) — significantly faster than a plain list, where removing the front element requires shifting all remaining items.
-
-The queue holds up to 10 items. Processed images are moved to a short history buffer so recently classified results remain accessible via the `/api/queue` endpoint.
-
-### 2.3 Max Heap — Breed Ranking
-**File:** `app.py`  
-**Class:** `BreedMaxHeap`
-
-A max heap ranks all breeds by the number of images in the dataset, always keeping the most-represented breed at index 0. Internally it uses a flat Python list where the parent of node `i` is at `(i-1)//2` and its children at `2i+1` and `2i+2`.
-
-- **Insert:** adds to the end, then `_bubble_up` swaps the item upward until the heap rule (parent ≥ children) is restored — **O(log n)**.
-- **get_max:** reads index 0 — **O(1)**.
-- **extract_max:** swaps root with the last item, removes the last, then `_bubble_down` restores order — **O(log n)**.
-
-This powers the breed leaderboard visible in the web dashboard and is populated at startup from the BST's in-order traversal.
-
----
-
-## 3. How to Run the Program
-
-### Prerequisites
-
-```
-Python 3.9 or higher
-pip
-```
-
-### Step 1 — Install dependencies
-
+**Step 1 — Install dependencies**
 ```bash
-pip install flask torch torchvision pillow scikit-learn
+pip install flask torch torchvision pillow matplotlib scikit-learn
 ```
 
-### Step 2 — Prepare your dataset
+**Step 2 — Organise your images**
 
-Organise dog images in a folder where each sub-folder is a breed name:
-
+Put your dog photos in a folder where each subfolder is a breed name:
 ```
 dog_images/
   golden_retriever/
@@ -88,41 +29,154 @@ dog_images/
     photo_a.jpg
 ```
 
-### Step 3 — Build the dataset index
-
+**Step 3 — Build the dataset index**
 ```bash
 python dog_dataset_manager.py
 ```
+Choose option 1 to scan, then option 4 to save. This creates `dataset_snapshot.json`.
 
-Choose option **[1]** to scan your folder, then **[4]** to save the snapshot. This creates `dataset_snapshot.json`.
-
-### Step 4 — Train the model
-
+**Step 4 — Train the model**
 ```bash
 python trainer.py
 ```
+This fine-tunes ResNet-18 on your dataset and saves `dog_model.pth`. Takes a few minutes depending on dataset size.
 
-This fine-tunes ResNet-18 on your dataset and saves `dog_model.pth`. Training may take several minutes depending on dataset size and whether a GPU is available (CUDA is used automatically if detected).
-
-### Step 5 — Launch the web application
-
+**Step 5 — Launch the web app**
 ```bash
 python app.py
 ```
-
-Open your browser at **http://localhost:5000**, upload any dog photo, and the system will return the top-3 predicted breeds with confidence scores.
+Open your browser at **http://localhost:5000**
 
 ---
 
-### File Overview
+## The AI — How It Works
 
-| File | Purpose |
-|---|---|
-| `dog_dataset_manager.py` | BST dataset manager + CLI menu |
-| `trainer.py` | ResNet-18 fine-tuning script |
-| `app.py` | Flask web server + Queue + Heap |
-| `dataset_snapshot.json` | Persisted BST (auto-generated) |
-| `dog_model.pth` | Trained model weights (auto-generated) |
-| `dog_images/` | Training images (one folder per breed) |
-| `test_dogs/` | Images for quick manual testing |
-| `templates/` | HTML templates for the web interface |
+### Transfer Learning with ResNet-18
+
+The recognition engine is built on **ResNet-18**, a convolutional neural network developed by Microsoft Research and pre-trained on ImageNet — a dataset of 1.2 million photos across 1,000 categories. ResNet-18 already knows how to detect edges, textures, fur patterns, body shapes, and facial structures from that prior training.
+
+Rather than training a neural network from scratch — which would require millions of images and days of computation — this project uses **transfer learning**. The pre-trained ResNet-18 is loaded with its weights frozen, and only the final classification layer is replaced and trained from scratch:
+
+```
+Original ResNet-18 final layer:
+  512 inputs → 1000 outputs (ImageNet categories)
+
+Replaced with:
+  Dropout(0.3) → Linear(512→256) → ReLU → Linear(256→7 breeds)
+```
+
+Freezing the earlier layers means the model keeps all its visual knowledge from ImageNet. Only the new final layers learn — making training fast and effective even with a small dataset.
+
+### What the Network Actually Learns
+
+ResNet-18 uses **residual connections** — shortcuts that let gradients flow directly through the network without degrading. This allows it to be 18 layers deep without the vanishing gradient problem that plagued earlier deep networks. Each layer learns increasingly abstract features:
+
+- **Early layers** — edges, corners, basic textures
+- **Middle layers** — fur patterns, ear shapes, eye structures
+- **Deep layers** — full facial features, body proportions, breed-specific markings
+- **Final layer (ours)** — maps those features to one of 7 breed categories
+
+### Training Process
+
+Training runs for **10 epochs** — meaning the model sees the entire dataset 10 times. Each pass through the data:
+
+1. A batch of 16 images is fed to the model
+2. The model makes predictions for each image
+3. **Cross-entropy loss** calculates how wrong the predictions were — a single number measuring the gap between predictions and correct answers
+4. **Backpropagation** traces that error backwards through the final layers, calculating how much each weight contributed
+5. **Adam optimiser** adjusts the weights slightly in the direction that reduces the error
+6. Repeat for the next batch
+
+After every epoch, the model is tested on the 20% of images it was never trained on (the validation set). The best-performing checkpoint is saved — so even if later epochs overfit slightly, the saved model always reflects peak accuracy.
+
+A **learning rate scheduler** watches the validation accuracy. If it stops improving for 2 consecutive epochs, the learning rate is halved automatically — taking smaller, more careful steps when big steps are no longer helping.
+
+### Data Augmentation
+
+Before each training image is shown to the model, it goes through random transformations:
+
+- **Random horizontal flip** (50% chance) — mirrors the image
+- **Random rotation** (up to ±15 degrees) — tilts the image slightly
+- **Colour jitter** — varies brightness and contrast slightly
+
+These aren't errors — they're deliberate. If the model only ever saw dogs standing perfectly upright under consistent lighting, it would fail on real-world photos. Augmentation forces it to learn what "dog" means regardless of orientation or lighting conditions.
+
+Validation images are never augmented — they're kept clean so the accuracy measurement is honest.
+
+### Making a Prediction
+
+When a photo is uploaded:
+
+1. Image is resized to **224×224 pixels** (ResNet-18's required input size)
+2. Pixel values are normalised using ImageNet's mean and standard deviation — the same values used during the original pre-training, because the model's internal filters were calibrated for that specific numerical range
+3. The tensor is passed through all 18 layers of ResNet-18
+4. The output is 7 raw scores (called **logits**), one per breed
+5. **Softmax** converts the logits into probabilities that sum to exactly 100%
+6. The top 3 probabilities and their breed labels are returned
+
+### Results
+
+After training, `trainer.py` saves:
+- `dog_model.pth` — the trained weights
+- `results/training_curves.png` — accuracy and loss graphs across all epochs
+- `results/classification_report.txt` — per-breed precision, recall, and F1 scores
+
+---
+
+## Data Structures
+
+Three custom data structures are implemented from scratch. Each one solves a specific problem that the others cannot.
+
+### Binary Search Tree (AVL-balanced)
+
+**File:** `dog_dataset_manager.py`
+
+The BST is the dataset catalogue. Every breed is one node storing the breed name, all image file paths, and metadata. Breeds are sorted alphabetically — left child comes before the current node, right child comes after.
+
+Searching any breed takes **O(log n)** — about 7 steps for 100 breeds, 10 steps for 1000. Without balancing, inserting breeds in alphabetical order (as a folder scan produces) would create a straight line with O(n) search. AVL balancing prevents this by automatically rotating nodes after every insertion to keep both sides of the tree roughly equal in depth.
+
+The BST connects to the web app at prediction time — after the model identifies a breed, `bst.search()` pulls that breed's image count to display alongside the confidence score.
+
+### Max Heap
+
+**File:** `app.py`
+
+The Heap powers the breed leaderboard. It guarantees the breed with the most training images is always at index 0 — instantly accessible without sorting.
+
+Stored as a flat Python list where parent-child relationships are determined by index math: parent of `i` is `(i-1)//2`, children are `2i+1` and `2i+2`. Insertions bubble up in O(log n), the maximum is retrieved in O(1). Populated at startup from the BST's in-order traversal.
+
+### Queue (FIFO)
+
+**File:** `app.py`
+
+The Queue manages uploaded images. Every photo joins the back and is processed from the front — first in, first out. Backed by Python's `collections.deque` for O(1) operations at both ends. Maximum 10 images waiting at once. Processed images move to a history log keeping the last 10 results accessible.
+
+---
+
+## Project Structure
+
+```
+Dog-pattern-recognisiton/
+├── app.py                  — Flask web app + Queue + Heap
+├── dog_dataset_manager.py  — BST dataset manager + CLI
+├── trainer.py              — ResNet-18 fine-tuning
+├── recogniser.py           — Command-line breed recognition
+├── templates/
+│   └── index.html          — Web interface
+├── dog_images/             — Training images (one folder per breed)
+├── dataset_snapshot.json   — Auto-generated BST snapshot
+└── dog_model.pth           — Auto-generated trained weights
+```
+
+> `dataset_snapshot.json` and `dog_model.pth` are auto-generated. Run `dog_dataset_manager.py` then `trainer.py` to create them.
+
+---
+
+## File Overview
+
+| File | Purpose | Run |
+|---|---|---|
+| `dog_dataset_manager.py` | Scan images, build BST, save snapshot | Once |
+| `trainer.py` | Fine-tune ResNet-18, save model weights | Once |
+| `app.py` | Web interface, predictions, dashboard | Every time |
+| `recogniser.py` | Command-line predictions | Optional |
